@@ -72,3 +72,14 @@
       (is (e/=ish -0.90 (r/get-message-valence message)))
     ))
 )
+
+(deftest words-scored
+  (testing "multiple-words"
+    (let [filename "resources/data/Warriner_sample.csv"
+          db (r/read-ratings-file filename)
+          message "abandon the aardvark"
+            ;; abandon 2.84    -2.16
+            ;; aardvark 6.26   1.26
+         ]
+      (is (= [2 3] (r/get-message-words-scored message))))
+)) 

@@ -1,13 +1,15 @@
-(ns ratings.words
+(ns ratings.words-stem
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.math.numeric-tower :as math]
+            [clj-tokenizer.core :as token]
 ))
 
 
 (def word-db "atom containing a map of with a single key, for now,
   of :words.  The value for :words is another map with the string
-  of a word for the key and a map of containing :word and :valence"
+  of the stem of a word for the key and a map of containing 
+  :stem, :word and :valence"
   (atom {:words {}}))
 
 (defn- center 
@@ -15,7 +17,9 @@
    neither positive or negative, at 0"
   [n]
   (/ (math/round (- (* 100 n) 500)) 100.0))
-  
+ 
+(defn get-stem [w]
+  (first (token/token-seq (token/stemmed (token/token-stream w)))))
 
 (defn build-word-map 
   "given line of text with comma separated numbers
@@ -27,8 +31,13 @@
   :word, :valence (V.Mean.Sum), :arousal (A.Mean.Sum), :dominance (D.Mean.Sum)
   "
   [r]
-  (let [parts (vec (str/split r #","))]
-    {:word (get parts 1) :valence (center (read-string (get parts 2)))}
+  (let [parts (vec (str/split r #","))
+        the-word (get parts 1)
+       ]
+    {:word the-word 
+     :valence (center (read-string (get parts 2)))
+     :stem (get-stem the-word)
+    }
 ))
 
 (defn add-ratings-word 
@@ -37,7 +46,7 @@
    word lemmas.  The value of that map is a map of the stats for
    that given word"
   [rm wm]
-  (assoc-in rm [:words (:word wm)] wm)
+  (assoc-in rm [:words (:stem wm)] wm)
 )
 
 (defn build-up-ratings-map 
@@ -57,7 +66,8 @@
 
 
 (defn get-valence [w]
-  (get-in @word-db [:words w :valence] 0))
+  (let [stemword (get-stem w)]
+  (get-in @word-db [:words stemword :valence] 0)))
 
 (defn get-message-valence 
   "Simple split of the message splitting on spaces only.
@@ -74,7 +84,7 @@
   "count of how many words actually got scores"
  [m]
   (let [parts (str/split m #" ")
-        valence-exists (fn [w] (get-in @word-db [:words w :valence]))
+        valence-exists (fn [w] (get-in @word-db [:words (get-stem w) :valence]))
         add-existence (fn [v w] [(if (valence-exists w) (inc (first v)) (first v)) (inc (second v))])
        ]
     (reduce add-existence [0 0] parts)))

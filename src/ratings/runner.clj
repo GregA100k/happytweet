@@ -1,5 +1,6 @@
 (ns ratings.runner
-  (:require [ratings.words :as words :refer [get-message-valence]]
+  (:require [ratings.words :as words]
+            [ratings.words-stem :as wordstem]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.pprint :as p]
@@ -71,7 +72,7 @@
   "given a score map containing values for number :correct
    and the :total tweets tested, compute the :percent-correct
    and add it to the map"
-  [sm] (assoc sm :percent-correct (/ (:correct sm) (:total sm) 1.0)))
+  [sm] (assoc sm :percent-correct (/ (get sm :correct 0) (:total sm) 1.0)))
 
 (defn percent-correct [s]
    (reduce #(assoc-in %1 [%2] (add-percent-correct (%2 %1))) s (keys s)))
@@ -96,5 +97,26 @@
   (p/pprint compiled-percents)
   (println "-- overal totals --")
   (p/pprint (overall-percents compiled-percents))
+  (println)
+  (println "totals of words scored " 
+    (apply map + 
+      (map #(words/get-message-words-scored (:text %)) tweet-list)))
+  (println)
+
+
+  (println "-- totals for stemmed words -- ")
+  (def stem-scores 
+    (doall (map #(process-tweet % wordstem/get-message-valence) tweet-list)))
+  (def compiled-stem-scores (reduce compile-scores {} stem-scores))
+  (p/pprint compiled-stem-scores)
+  (println)
+  (def compiled-stem-percents (percent-correct compiled-stem-scores))
+  (p/pprint compiled-stem-percents)
+  (println "-- overal totals --")
+  (p/pprint (overall-percents compiled-stem-percents))
+  (println)
+  (println "totals of words scored " 
+    (apply map + 
+      (map #(wordstem/get-message-words-scored (:text %)) tweet-list)))
 )
 

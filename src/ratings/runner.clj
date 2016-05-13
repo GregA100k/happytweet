@@ -10,15 +10,18 @@
 
 (def tweet-file "resources/data/testdata.manual.2009.06.14.csv")
 
-(defn- parse-tweet-row 
+(defn parse-tweet-row 
   "The tweet file is made up of comma separated strings.  The values have
    double quotes around them and occur in the following order:
    :score, :id, date and time (ignored), ignored, ignored, :text
 
    a map of those keys and the values contained in the row is returned"
   [r]
-  (let [parts (str/split r #",")]
-    {:id (get parts 1) :score (read-string (read-string (get parts 0))) :text (get parts 5)}
+  (let [parts (str/split r #",")
+        reg-parts (re-find #"\"(\d+)\",\"(\d+)\",\"(?:.+)\",\"(?:.+)\",\"(.*)\"$" r)]
+    {:id (get parts 1) 
+     :score (read-string (read-string (get parts 0))) 
+     :text (get reg-parts 3)}
 ))
 
 (defn- build-tweet-list [tr-seq]
@@ -36,11 +39,16 @@
 ))
 
 (defn right-or-wrong [{score :score valence :valence}]
+  (let [neutral-cuttoff 1.0
+        positive? (fn [v] (< neutral-cuttoff v))
+        negative? (fn [v] (> (- neutral-cuttoff) v))
+        neutral?  (fn [v] (and (>= v (- neutral-cuttoff)) (<= v neutral-cuttoff)))
+       ]
   (cond
-    (= 0 score) (> 0 valence)
-    (= 2 score) (= 0 valence)
-    (= 4 score) (< 0 valence)
-))
+    (= 0 score) (negative? valence)
+    (= 2 score) (neutral?  valence)
+    (= 4 score) (positive? valence)
+)))
 
 (defn compile-scores
   "very procedural function to take a map of score compilattions
@@ -85,6 +93,12 @@
        ]
       (add-percent-correct totalamounts)))
 
+(defn build-dump-string [t]
+  (let [words-valence (:valence (process-tweet t words/get-message-valence))
+        stem-valence (:valence (process-tweet t wordstem/get-message-valence))
+       ]
+  (str (:id t) ", " (:score t) ", " words-valence ", " stem-valence ", " (:text t))))
+
 
 (defn -main []
   (def tweet-list (read-tweet-file tweet-file))
@@ -118,5 +132,6 @@
   (println "totals of words scored " 
     (apply map + 
       (map #(wordstem/get-message-words-scored (:text %)) tweet-list)))
-)
 
+  (p/pprint (map build-dump-string tweet-list))
+)

@@ -19,9 +19,9 @@
   (testing "plain word"
     (let [test-map {:words {}}
           word-map (r/build-word-map testline)
-          t (println word-map)
+          ;t (println word-map)
           result (r/add-ratings-word test-map word-map)
-          t2 (println result)
+          ;t2 (println result)
           x (r/reset-word-db result)
          ]
     (is (= 1.41 (r/get-valence "run")))
